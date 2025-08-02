@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lista de Cantores - Sistema de Cantores</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <style>
+        .navbar-brand {
+            font-weight: bold;
+        }
+        .footer {
+            margin-top: auto;
+            padding: 20px 0;
+            background-color: #f8f9fa;
+            border-top: 1px solid #dee2e6;
+        }
+        .main-content {
+            min-height: calc(100vh - 200px);
+        }
+        .alert {
+            margin-bottom: 1.5rem;
+        }
+        .card {
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        }
+        .btn-action {
+            margin: 0 2px;
+        }
+        .search-box {
+            max-width: 300px;
+        }
+        .singer-card {
+            transition: transform 0.2s;
+        }
+        .singer-card:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body class="d-flex flex-column min-vh-100">
+
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/singers">
+                <i class="bi bi-music-note-beamed"></i>
+                Sistema de Cantores
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/singers">
+                            <i class="bi bi-list"></i> Cantores
+                        </a>
+                    </li>
+                    <li class="nav-item" sec:authorize="hasRole('ADMIN')">
+                        <a class="nav-link" href="/singers/add">
+                            <i class="bi bi-plus-circle"></i> Adicionar Cantor
+                        </a>
+                    </li>
+                </ul>
+                
+                <ul class="navbar-nav">
+                    <li class="nav-item" sec:authorize="isAuthenticated()">
+                        <span class="navbar-text me-3">
+                            <i class="bi bi-person-circle"></i>
+                            Olá, <span sec:authentication="name">User</span>!
+                        </span>
+                    </li>
+                    <li class="nav-item" sec:authorize="isAuthenticated()">
+                        <a class="nav-link" href="/logout">
+                            <i class="bi bi-box-arrow-right"></i> Logout
+                        </a>
+                    </li>
+                    <li class="nav-item" sec:authorize="!isAuthenticated()">
+                        <a class="nav-link" href="/login">
+                            <i class="bi bi-box-arrow-in-right"></i> Login
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow-1 main-content">
+        <div class="container mt-4">
+            <!-- Alert Messages -->
+            <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="bi bi-check-circle-fill"></i>
+                <span th:text="${successMessage}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            
+            <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <span th:text="${errorMessage}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+
+            <!-- Page Header -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <h1 class="h2">
+                        <i class="bi bi-music-note-list"></i>
+                        Lista de Cantores
+                    </h1>
+                    <p class="text-muted">
+                        Total: <span th:text="${totalSingers}">0</span> cantor(es) cadastrado(s)
+                    </p>
+                </div>
+                <div class="col-md-6">
+                    <div class="d-flex justify-content-end gap-2">
+                        <!-- Search Form -->
+                        <form class="d-flex search-box" method="get" action="/singers">
+                            <input class="form-control me-2" type="search" name="search" 
+                                   th:value="${search}" placeholder="Buscar cantores..." aria-label="Search">
+                            <button class="btn btn-outline-secondary" type="submit">
+                                <i class="bi bi-search"></i>
+                            </button>
+                        </form>
+                        
+                        <!-- Add Button (Admin only) -->
+                        <a sec:authorize="hasRole('ADMIN')" href="/singers/add" class="btn btn-primary">
+                            <i class="bi bi-plus-circle"></i> Adicionar
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search Results Info -->
+            <div th:if="${search}" class="alert alert-info">
+                <i class="bi bi-search"></i>
+                Resultados da busca por: "<strong th:text="${search}"></strong>"
+                <a href="/singers" class="ms-2 text-decoration-none">
+                    <i class="bi bi-x-circle"></i> Limpar busca
+                </a>
+            </div>
+
+            <!-- Singers List -->
+            <div th:if="${#lists.isEmpty(singers)}" class="text-center py-5">
+                <i class="bi bi-music-note-beamed display-1 text-muted"></i>
+                <h3 class="mt-3 text-muted">Nenhum cantor encontrado</h3>
+                <p class="text-muted" th:if="${search}">
+                    Tente ajustar os termos da busca ou 
+                    <a href="/singers" class="text-decoration-none">ver todos os cantores</a>
+                </p>
+                <p class="text-muted" th:unless="${search}">
+                    <span sec:authorize="hasRole('ADMIN')">
+                        <a href="/singers/add" class="btn btn-primary">
+                            <i class="bi bi-plus-circle"></i> Adicionar primeiro cantor
+                        </a>
+                    </span>
+                    <span sec:authorize="!hasRole('ADMIN')">
+                        Ainda não há cantores cadastrados no sistema.
+                    </span>
+                </p>
+            </div>
+
+            <div th:unless="${#lists.isEmpty(singers)}" class="row">
+                <div th:each="singer : ${singers}" class="col-md-6 col-lg-4 mb-4">
+                    <div class="card singer-card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="bi bi-person-fill text-primary"></i>
+                                <span th:text="${singer.name}">Nome do Cantor</span>
+                            </h5>
+                            
+                            <div class="mb-2">
+                                <small class="text-muted">
+                                    <i class="bi bi-music-note"></i>
+                                    <strong>Gênero:</strong> <span th:text="${singer.genre}">Gênero</span>
+                                </small>
+                            </div>
+                            
+                            <div class="mb-2">
+                                <small class="text-muted">
+                                    <i class="bi bi-calendar-event"></i>
+                                    <strong>Nascimento:</strong> 
+                                    <span th:text="${#temporals.format(singer.birthDate, 'dd/MM/yyyy')}">Data</span>
+                                </small>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <small class="text-muted">
+                                    <i class="bi bi-geo-alt"></i>
+                                    <strong>Nacionalidade:</strong> <span th:text="${singer.nationality}">Nacionalidade</span>
+                                </small>
+                            </div>
+                            
+                            <!-- Admin Actions -->
+                            <div sec:authorize="hasRole('ADMIN')" class="d-flex gap-1">
+                                <a th:href="@{/singers/edit/{id}(id=${singer.id})}" 
+                                   class="btn btn-sm btn-outline-primary btn-action">
+                                    <i class="bi bi-pencil"></i> Editar
+                                </a>
+                                <a th:href="@{/singers/delete/{id}(id=${singer.id})}" 
+                                   class="btn btn-sm btn-outline-danger btn-action"
+                                   th:onclick="'return confirmDelete(\'' + ${singer.name} + '\');'">
+                                    <i class="bi bi-trash"></i> Remover
+                                </a>
+                            </div>
+                            
+                            <!-- Creation/Update info -->
+                            <div class="mt-2">
+                                <small class="text-muted">
+                                    <i class="bi bi-clock"></i>
+                                    Cadastrado em: 
+                                    <span th:text="${#temporals.format(singer.createdAt, 'dd/MM/yyyy HH:mm')}">Data</span>
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer bg-light">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <span class="text-muted">
+                        © 2024 Sistema de Gerenciamento de Cantores
+                    </span>
+                </div>
+                <div class="col-md-6 text-end">
+                    <span class="text-muted">
+                        Desenvolvido com Spring Boot 3.5.3 e Java 21
+                    </span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Auto-hide alerts after 5 seconds
+        setTimeout(function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(function(alert) {
+                const bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            });
+        }, 5000);
+        
+        // Confirm delete actions
+        function confirmDelete(singerName) {
+            return confirm('Tem certeza que deseja remover o cantor "' + singerName + '"?\n\nEsta ação não pode ser desfeita.');
+        }
+    </script>
+</body>
+</html>
